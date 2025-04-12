@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:fragment="editModalFragment(user, roles)">
+    <div class="modal fade" th:id="'editModal__' + ${user.id}" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form th:action="@{/admin/update}" method="post">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit User</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="id" th:value="${user.id}"/>
+                        <input type="text" class="form-control mb-2" name="firstName" th:value="${user.firstName}"
+                               required>
+                        <input type="text" class="form-control mb-2" name="lastName" th:value="${user.lastName}"
+                               required>
+                        <input type="number" class="form-control mb-2" name="age" th:value="${user.age}" required>
+                        <input type="email" class="form-control mb-2" name="email" th:value="${user.email}" required>
+                        <input type="password" class="form-control mb-2" name="password"
+                               placeholder="New Password (optional)">
+
+                        <label class="form-label mt-2">Roles:</label>
+                        <select name="roles" multiple class="form-select">
+                            <option th:each="r : ${roles}" th:value="${r.name}"
+                                    th:text="${r.name}"
+                                    th:selected="${user.roles.contains(r)}"></option>
+                        </select>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Update</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

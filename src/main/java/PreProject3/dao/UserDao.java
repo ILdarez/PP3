@@ -1,18 +1,20 @@
 package PreProject3.dao;
 
-
 import PreProject3.model.User;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface UserDao {
-    User getUserById(Long id);
+    Optional<User> findByEmail(String email);
 
-    List<User> showAllUsers();
+    User save(User user);
 
-    void save(User user);
+    List<User> findAll();
 
-    void update(User user);
+    Optional<User> findById(Long id);
 
-    void delete(User user);
+    void deleteById(Long id);
+
+    User update(User user);
 }

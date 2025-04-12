@@ -2,6 +2,7 @@ package PreProject3;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 @SpringBootApplication
 public class PreProject3Application {
@@ -9,5 +10,4 @@ public class PreProject3Application {
     public static void main(String[] args) {
         SpringApplication.run(PreProject3Application.class, args);
     }
-
 }
