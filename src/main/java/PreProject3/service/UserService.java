@@ -1,18 +1,24 @@
 package PreProject3.service;
 
+
 import PreProject3.model.Role;
 import PreProject3.model.User;
-import org.springframework.security.core.userdetails.UserDetailsService;
 
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 
 public interface UserService {
-    User findByEmail(String email);
-    void createUser(User user, Set<String> roles);
-    List<User> getAllUsers();
-    void updateUser(Long id, User user, Set<String> roles);
-    void deleteUser(Long id);
+    Optional<User> findByUsername(String username);
 
-    List<Role>getAllRoles();
+    Optional<User> getUserById(Long id);
+
+    List<User> getAllUsers();
+
+    List<Role> getAllRoles();
+
+    void createUser(User user, List<Long> roleIds);
+
+    void updateUser(Long id, String firstName, String lastName, Integer age, String email, List<Long> roleIds, String password);
+
+    void deleteUser(Long id);
 }

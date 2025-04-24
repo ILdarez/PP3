@@ -1,85 +1,107 @@
 package PreProject3.service;
 
-import PreProject3.dao.RoleDao;
-import PreProject3.dao.UserDao;
 import PreProject3.model.Role;
 import PreProject3.model.User;
-import org.springframework.context.annotation.Lazy;
+import PreProject3.repositories.RoleRepository;
+import PreProject3.repositories.UserRepository;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+
+import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 
 @Service
-public class UserServiceImpl implements UserService {
-    private final RoleDao roleDao;
-    private final UserDao userDao;
-    private final RoleServiceImpl roleService;
+@Transactional
+public class UserServiceImpl implements UserService, UserDetailsService {
+
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public UserServiceImpl(
-            RoleDao roleDao,
-            UserDao userDao,
-            RoleServiceImpl roleService,
-            @Lazy PasswordEncoder passwordEncoder
-    ) {
-        this.roleDao = roleDao;
-        this.userDao = userDao;
-        this.roleService = roleService;
+    public UserServiceImpl(UserRepository userRepository,
+                           RoleRepository roleRepository,
+                           PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public User findByEmail(String email) {
-        return userDao.findByEmail(email).orElse(null);
+    public Optional<User> findByUsername(String username) {
+        return userRepository.findByUsername(username);
     }
 
     @Override
-    @Transactional
-    public void createUser(User user, Set<String> roleNames) {
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        user.setRoles(roleService.getRolesByNames(roleNames));
-        userDao.save(user);
+    @Transactional(readOnly = true)
+    public Optional<User> getUserById(Long id) {
+        return userRepository.findById(id);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<User> getAllUsers() {
-        return userDao.findAll();
-    }
-
-    @Override
-    @Transactional
-    public void updateUser(Long id, User userDetails, Set<String> roles) {
-        User user = userDao.findById(id)
-                .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
-
-        user.setFirstName(userDetails.getFirstName());
-        user.setLastName(userDetails.getLastName());
-        user.setAge(userDetails.getAge());
-        user.setEmail(userDetails.getEmail());
-
-        if (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty()) {
-            user.setPassword(passwordEncoder.encode(userDetails.getPassword()));
-        }
-
-        user.setRoles(roleService.getRolesByNames(roles));
-        userDao.save(user);
-    }
-
-    @Override
-    @Transactional
-    public void deleteUser(Long id) {
-        userDao.deleteById(id);
+        return userRepository.findAll();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Role> getAllRoles() {
-        return roleDao.findAll();
+        return roleRepository.findAll();
     }
 
+    @Override
+    @Transactional
+    public void createUser(User user, List<Long> roleIds) {
+        if (user.getId() == null) {
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+            user.setRoles(new HashSet<>(roleRepository.findAllById(roleIds)));
+            userRepository.save(user);
+        } else {
+            throw new IllegalArgumentException("Invalid user ID");
+        }
+    }
+
+    @Override
+    @Transactional
+    public void updateUser(Long id, String firstName, String lastName, Integer age, String email, List<Long> roleIds, String password) {
+        User user = getUserById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + id));
+
+        user.setFirstName(firstName);
+        user.setLastName(lastName);
+        user.setAge(age);
+        user.setEmail(email);
+        user.setRoles(new HashSet<>(roleRepository.findAllById(roleIds)));
+
+        if (password != null && !password.isEmpty()) {
+            user.setPassword(passwordEncoder.encode(password));
+        }
+        userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public void deleteUser(Long id) {
+        userRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserDetails loadUserByUsername(String username) {
+        User user = findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        return new org.springframework.security.core.userdetails.User(
+                user.getUsername(),
+                user.getPassword(),
+                user.getAuthorities()
+        );
+    }
 }

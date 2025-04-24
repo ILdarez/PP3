@@ -1,51 +1,88 @@
 package PreProject3.model;
 
+
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "users")
 public class User implements UserDetails {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "first_name")
+    @Column
+    @NotBlank(message = "First name is required")
+    @Size(min = 2, max = 50, message = "First name must be between 2 and 50 characters")
     private String firstName;
 
-    @Column(name = "last_name")
+    @Column
+    @NotBlank(message = "Last name is required")
+    @Size(min = 2, max = 50, message = "Last name must be between 2 and 50 characters")
     private String lastName;
 
-    @Column(nullable = false)
-    private int age;
+    @Column
+    @NotNull(message = "Age is required")
+    @Min(value = 0, message = "Age must be positive")
+    private Integer age;
 
-    @Column(unique = true, nullable = false)
+    @Email
+    @Column(unique = true)
+    @NotBlank(message = "Email is required")
+    @Size(min = 5, max = 100, message = "Email must be between 5 and 100 characters")
     private String email;
 
-    @Column(nullable = false)
+    @Column
+    @NotBlank(message = "Password is required")
+    @Size(min = 5, message = "Password must be at least 5 characters")
     private String password;
 
-    @ManyToMany(fetch = FetchType.EAGER, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    @JoinTable(
-            name = "user_roles",
+    @ManyToMany(fetch = FetchType.LAZY)
+    @NotEmpty(message = "At least one role is required")
+    @JoinTable(name = "users_roles",
             joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id")
-    )
+            inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
+
+    @Transient
+    private List<Long> roleIds;
 
     public User() {
     }
 
+    public User(
+            Long id,
+            String firstName,
+            String lastName,
+            Integer age,
+            String email,
+            String password,
+            Set<Role> roles,
+            List<Long> roleIds) {
+        this.id = id;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.age = age;
+        this.email = email;
+        this.password = password;
+        this.roles = roles;
+        this.roleIds = roleIds;
+    }
+
+    // Геттеры и сеттеры
     public Long getId() {
         return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getFirstName() {
@@ -64,11 +101,11 @@ public class User implements UserDetails {
         this.lastName = lastName;
     }
 
-    public int getAge() {
+    public Integer getAge() {
         return age;
     }
 
-    public void setAge(int age) {
+    public void setAge(Integer age) {
         this.age = age;
     }
 
@@ -89,7 +126,31 @@ public class User implements UserDetails {
     }
 
     public void setRoles(Set<Role> roles) {
-        this.roles = (roles != null) ? roles : new HashSet<>();
+        this.roles = roles;
+    }
+
+    public List<Long> getRoleIds() {
+        return roleIds;
+    }
+
+    public void setRoleIds(List<Long> roleIds) {
+        this.roleIds = roleIds;
+    }
+
+    public boolean isAdmin() {
+        return hasRole("ROLE_ADMIN");
+    }
+
+    public boolean hasRole(String roleName) {
+        if (roles == null) {
+            return false;
+        }
+        return roles.stream().anyMatch(role -> role.getName().equals(roleName));
+    }
+
+    @Override
+    public String getPassword() {
+        return password;
     }
 
     @Override
@@ -97,11 +158,6 @@ public class User implements UserDetails {
         return roles.stream()
                 .map(role -> new SimpleGrantedAuthority(role.getName()))
                 .collect(Collectors.toList());
-    }
-
-    @Override
-    public String getPassword() {
-        return password;
     }
 
     @Override
@@ -134,12 +190,12 @@ public class User implements UserDetails {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         User user = (User) o;
-        return age == user.age && Objects.equals(id, user.id) && Objects.equals(firstName, user.firstName) && Objects.equals(lastName, user.lastName) && Objects.equals(email, user.email) && Objects.equals(password, user.password) && Objects.equals(roles, user.roles);
+        return Objects.equals(id, user.id) && Objects.equals(email, user.email);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, firstName, lastName, age, email, password, roles);
+        return Objects.hash(id, email);
     }
 
     @Override

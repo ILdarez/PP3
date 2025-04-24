@@ -1,0 +1,105 @@
+package PreProject3.controller;
+
+import PreProject3.model.Role;
+import PreProject3.model.User;
+import PreProject3.service.UserService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.bind.annotation.*;
+
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/rest")
+public class UserRestController {
+
+    private final UserService userService;
+
+    public UserRestController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @GetMapping("/users")
+    public ResponseEntity<List<User>> getAllUsers() {
+        List<User> users = userService.getAllUsers();
+        return ResponseEntity.ok(users);
+    }
+
+    @GetMapping("/roles")
+    public ResponseEntity<List<Role>> getAllRoles() {
+        return ResponseEntity.ok(userService.getAllRoles());
+    }
+
+    @GetMapping("/current-user")
+    public ResponseEntity<?> getCurrentUser(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        User user = userService.findByUsername(authentication.getName())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return ResponseEntity.ok(user);
+    }
+
+    @GetMapping("/users/{id}")
+    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id")
+    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+        return userService.getUserById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping(value = "/users")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<User> createUser(
+            @RequestParam Map<String, String> params,
+            @RequestParam("roleIds") List<Long> roleIds) {
+
+        User user = new User();
+        user.setFirstName(params.get("firstName"));
+        user.setLastName(params.get("lastName"));
+        user.setAge(Integer.parseInt(params.get("age")));
+        user.setEmail(params.get("email"));
+        user.setPassword(params.get("password"));
+
+        userService.createUser(user, roleIds);
+        return ResponseEntity.status(HttpStatus.CREATED).body(user);
+    }
+
+    @PutMapping(value = "/users/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> updateUser(
+            @PathVariable Long id,
+            @RequestParam String firstName,
+            @RequestParam String lastName,
+            @RequestParam Integer age,
+            @RequestParam String email,
+            @RequestParam List<Long> roleIds,
+            @RequestParam(required = false) String password) {
+
+        try {
+            userService.updateUser(id, firstName, lastName, age, email, roleIds, password);
+            User updatedUser = userService.getUserById(id)
+                    .orElseThrow(() -> new IllegalArgumentException("User not found after update"));
+            return ResponseEntity.ok(updatedUser);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/users/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> deleteUser(@PathVariable Long id) {
+        try {
+            userService.deleteUser(id);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+}

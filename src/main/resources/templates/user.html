@@ -2,7 +2,6 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <title>User Information</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         .custom-navbar {
@@ -70,38 +69,33 @@
         }
     </style>
 </head>
+<meta name="_csrf" content=""/>
+<meta name="_csrf_header" content=""/>
+</head>
 <body>
 <nav class="navbar navbar-expand-lg custom-navbar py-3">
     <div class="container-fluid">
-        <span class="navbar-brand text-white">
-            <span th:text="${#authentication.name}"></span>
-            with roles:
-            <span th:each="role : ${#authentication.authorities}"
-                  th:text="${role.authority} + ' '"></span>
-        </span>
-        <form th:action="@{/logout}" method="post">
-            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <span class="navbar-brand text-white" id="userUserInfo"></span>
+        <form method="post" action="/logout" class="d-inline" id="logoutForm">
             <button type="submit" class="btn btn-link logout-link p-0">Logout</button>
         </form>
     </div>
 </nav>
 
 <div class="sidebar">
-    <nav class="nav flex-column">
-        <a class="nav-link"
-           href="/admin"
-           th:if="${#lists.contains(#authentication.authorities.![authority], 'ROLE_ADMIN')}">Admin</a>
-        <a class="nav-link active" href="/user">User</a>
+    <nav class="nav flex-column" id="sidebarNav">
+        <a class="nav-link active" href="#" data-page="user">User</a>
+        <a class="nav-link admin-only" href="#" data-page="admin" style="display: none;">Admin</a>
     </nav>
 </div>
 
-<div class="main-content">
+<div id="userContent" class="main-content">
     <div class="container">
         <h1 class="mb-3">User information-page</h1>
 
         <div class="card border-0 bg-transparent">
             <div class="card-body">
-                <table class="table custom-table table-striped">
+                <table class="table custom-table table-striped" id="userInfoTable">
                     <thead>
                     <tr>
                         <th>ID</th>
@@ -112,19 +106,7 @@
                         <th>Role</th>
                     </tr>
                     </thead>
-                    <tbody>
-                    <tr>
-                        <td th:text="${user.id}"></td>
-                        <td th:text="${user.firstName}"></td>
-                        <td th:text="${user.lastName}"></td>
-                        <td th:text="${user.age}"></td>
-                        <td th:text="${user.email}"></td>
-                        <td>
-                                <span th:each="role : ${user.roles}"
-                                      th:text="${role.name} + ' '"></span>
-                        </td>
-                    </tr>
-                    </tbody>
+                    <tbody id="userData"></tbody>
                 </table>
             </div>
         </div>
@@ -133,5 +115,70 @@
 
 <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    $(document).ready(function () {
+        const userUserInfo = $('#userUserInfo');
+        const userDataTableBody = $('#userData');
+        const sidebarNav = $('#sidebarNav');
+        const logoutForm = $('#logoutForm');
+        const csrfToken = $('meta[name="_csrf"]').attr('content');
+        const csrfHeader = $('meta[name="_csrf_header"]').attr('content');
+
+        if (csrfToken && csrfHeader) {
+            $('<input>').attr({
+                type: 'hidden',
+                name: csrfHeader,
+                value: csrfToken
+            }).appendTo(logoutForm);
+        } else {
+            console.error('CSRF token or header meta tags not found.');
+        }
+
+        function fetchCurrentUser() {
+            fetch('/api/rest/current-user')
+                .then(response => response.json())
+                .then(user => {
+                    const rolesText = user.roles.map(role => role.name).join(' ');
+                    userUserInfo.text(`${user.firstName} with roles: ${rolesText}`);
+                    displayUserInfo(user);
+
+                    sidebarNav.empty();
+                    sidebarNav.append('<a class="nav-link active" href="#" data-page="user">User</a>');
+                    if (user.roles.some(role => role.name === 'ROLE_ADMIN')) {
+                        sidebarNav.append('<a class="nav-link" href="#" data-page="admin">Admin</a>');
+                    }
+
+                    sidebarNav.on('click', '.nav-link', function (e) {
+                        e.preventDefault();
+                        const page = $(this).data('page');
+                        if (page === 'admin') {
+                            window.location.href = 'index.html';
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Failed to fetch current user info:', error);
+                    $('#userContent').html('<p class="text-danger">Failed to load user information.</p>');
+                });
+        }
+
+        function displayUserInfo(user) {
+            userDataTableBody.empty();
+            const row = `
+            <tr>
+                <td>${user.id}</td>
+                <td>${user.firstName}</td>
+                <td>${user.lastName}</td>
+                <td>${user.age}</td>
+                <td>${user.email}</td>
+                <td>${user.roles.map(role => role.name).join(', ')}</td>
+            </tr>
+        `;
+            userDataTableBody.append(row);
+        }
+
+        fetchCurrentUser();
+    });
+</script>
 </body>
 </html>
