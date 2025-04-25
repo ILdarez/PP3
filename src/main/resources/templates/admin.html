@@ -259,7 +259,31 @@
         #deleteModal .role-option:hover {
             background-color: transparent !important;
         }
+        .role-option {
+            position: relative; /* Чтобы позиционировать лейбл абсолютно внутри */
+            padding: 0; /* Уберите внутренние отступы, чтобы лейбл заполнил все пространство */
+            margin-bottom: 4px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            display: block; /* Чтобы лейбл мог занимать всю ширину */
+        }
 
+        .role-option input[type="checkbox"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer; /* Чтобы курсор был "клик" */
+        }
+
+        .role-option .role-label {
+            display: block; /* Чтобы лейбл занимал всю ширину */
+            padding: 8px 12px; /* Верните отступы для текста */
+        }
+
+        .role-option.checked {
+            background-color: #e0f7fa;
+        }
     </style>
 </head>
 <body>
@@ -676,7 +700,7 @@
                     roles.forEach(role => {
                         options += `
                     <div class="role-option">
-                        <input type="checkbox" name="roleIds" value="${role.id}" id="role_${role.id}" class="visually-hidden">
+                        <input type="checkbox" name="roleIds" value="${role.id}" id="role_${role.id}" >
                         <label for="role_${role.id}" class="role-label ps-3">${role.name}</label>
                     </div>
                 `;
@@ -738,15 +762,35 @@
                     $('#editEmail').val(user.email);
 
                     fetchRoles(editUserRolesContainer).then(() => {
-                        editUserRolesContainer.find('input[name="roleIds"]').each(function () {
-                            const roleLabel = $(this).next('.role-label').text();
-                            $(this).prop('checked', user.roles.some(role => role.name === roleLabel));
+                        const roleLabels = editUserRolesContainer.find('.role-label');
+                        console.log('Найдено лейблов ролей:', roleLabels.length);
+                        roleLabels.on('click', function() {
+                            console.log('Клик по лейблу роли!');
+                            const checkbox = $(this).prev('input[type="checkbox"]');
+                            console.log('Состояние чекбокса до изменения:', checkbox.prop('checked'));
+                            checkbox.prop('checked', !checkbox.prop('checked'));
+                            console.log('Состояние чекбокса после изменения:', checkbox.prop('checked'));
+                        });
+                        user.roles.forEach(role => {
+                            console.log('Обрабатываемая роль пользователя:', role.name, role.id);
+                            const checkboxToMark = editUserRolesContainer.find(`#role_${role.id}`);
+                            console.log('Найденный чекбокс:', checkboxToMark);
+                            const roleOption = checkboxToMark.closest('.role-option');
+                            console.log('Найденный родительский .role-option:', roleOption);
+                            if (checkboxToMark.length > 0 && roleOption.length > 0) {
+                                checkboxToMark.prop('checked', true);
+                                console.log('Чекбокс после установки checked:', checkboxToMark.prop('checked'));
+                                roleOption.addClass('checked');
+                                console.log('Классы .role-option после добавления checked:', roleOption.attr('class'));
+                            }
                         });
                     });
+
                 })
                 .catch(error => {
                     console.error('Failed to fetch user details for edit:', error);
                 });
+            $(this).css('padding-right', ''); // Сбрасываем inline-стиль padding-right
         });
 
         editUserForm.on('submit', function (e) {
